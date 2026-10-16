@@ -4,16 +4,17 @@ import type { Professional } from '@/types';
 interface ProfessionalCardProps {
   professional: Professional;
   onContact: (professional: Professional) => void;
+  onProfile: (professional: Professional) => void;
 }
 
-export function ProfessionalCard({ professional, onContact }: ProfessionalCardProps) {
+export function ProfessionalCard({ professional, onContact, onProfile }: ProfessionalCardProps) {
   const isNew = professional.reviews === 0 || professional.rating === 0;
   const hasRating = professional.reviews > 0 && professional.rating > 0;
 
   return (
     <article className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:border-blue-200 transition-all duration-300 overflow-hidden flex flex-col">
       {/* Photo */}
-      <div className="relative h-48 sm:h-52 overflow-hidden bg-slate-100">
+      <button onClick={() => onProfile(professional)} className="relative h-48 sm:h-52 overflow-hidden bg-slate-100 cursor-pointer">
         {professional.photo ? (
           <img
             src={professional.photo}
@@ -41,22 +42,24 @@ export function ProfessionalCard({ professional, onContact }: ProfessionalCardPr
             <span className="text-[10px] font-bold">Profesional Nuevo</span>
           </div>
         )}
-      </div>
+      </button>
 
       {/* Body */}
       <div className="p-4 sm:p-5 flex flex-col flex-1 gap-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className="text-base font-bold text-slate-900 leading-tight">{professional.name}</h3>
-            <p className="text-sm text-blue-700 font-semibold mt-0.5">{professional.profession}</p>
+        <button onClick={() => onProfile(professional)} className="text-left">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="text-base font-bold text-slate-900 leading-tight">{professional.name}</h3>
+              <p className="text-sm text-blue-700 font-semibold mt-0.5">{professional.profession}</p>
+            </div>
+            {professional.verificado && (
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold whitespace-nowrap flex-shrink-0">
+                <ShieldCheck className="w-3 h-3" />
+                Matriculado
+              </span>
+            )}
           </div>
-          {professional.verificado && (
-            <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-[10px] font-bold whitespace-nowrap flex-shrink-0">
-              <ShieldCheck className="w-3 h-3" />
-              Matriculado
-            </span>
-          )}
-        </div>
+        </button>
 
         {professional.description && (
           <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">
@@ -75,14 +78,22 @@ export function ProfessionalCard({ professional, onContact }: ProfessionalCardPr
           </div>
         </div>
 
-        {/* WhatsApp button */}
-        <button
-          onClick={() => onContact(professional)}
-          className="mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold shadow-md shadow-green-200/50 hover:shadow-lg hover:shadow-green-300/50 hover:scale-[1.02] active:scale-95 transition-all duration-200"
-        >
-          <MessageCircle className="w-4 h-4" />
-          Contactar por WhatsApp
-        </button>
+        {/* Actions */}
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => onProfile(professional)}
+            className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
+          >
+            Ver perfil y opiniones
+          </button>
+          <button
+            onClick={() => onContact(professional)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-xs font-bold shadow-md shadow-green-200/50 hover:shadow-lg active:scale-95 transition-all"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            Contactar
+          </button>
+        </div>
       </div>
     </article>
   );

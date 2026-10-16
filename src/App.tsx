@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { SearchBar } from '@/components/SearchBar';
 import { ProfessionalCard } from '@/components/ProfessionalCard';
+import { ProfessionalProfile } from '@/components/ProfessionalProfile';
+import { ContactVerificationModal } from '@/components/ContactVerificationModal';
 import { RegisterModal } from '@/components/RegisterModal';
 import { CourseModal } from '@/components/CourseModal';
 import { AdvertiseModal } from '@/components/AdvertiseModal';
@@ -9,6 +11,8 @@ import { CoursesView } from '@/components/CoursesView';
 import { AdCard } from '@/components/AdCard';
 import { InterstitialAd } from '@/components/InterstitialAd';
 import { LegalPage } from '@/components/LegalPage';
+import { ReviewPage } from '@/components/ReviewPage';
+import { AdminPanel } from '@/components/AdminPanel';
 import {
   fetchProfessionals,
   fetchAds,
@@ -16,18 +20,23 @@ import {
   incrementAdClicks,
   incrementCourseClicks,
 } from '@/lib/api';
-import type { CategoryId, Professional, Ad, Course } from '@/types';
+import type { CategoryId, Professional, Ad } from '@/types';
 import { SearchX, Loader2, AlertCircle, FileText, ShieldCheck } from 'lucide-react';
 
-type View = 'home' | 'courses' | 'legal';
+type View = 'home' | 'courses' | 'legal' | 'review' | 'admin';
 
 export default function App() {
   const [view, setView] = useState<View>('home');
+  const [reviewToken, setReviewToken] = useState('');
 
   // Modals
   const [registerOpen, setRegisterOpen] = useState(false);
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [advertiseOpen, setAdvertiseOpen] = useState(false);
+  const [profileProf, setProfileProf] = useState<Professional | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [verifyProf, setVerifyProf] = useState<Professional | null>(null);
+  const [verifyOpen, setVerifyOpen] = useState(false);
 
   // Interstitial
   const [interstitialAd, setInterstitialAd] = useState<Ad | null>(null);
@@ -44,7 +53,7 @@ export default function App() {
   const [neighborhood, setNeighborhood] = useState('Todos los barrios');
   const [activeCategory, setActiveCategory] = useState<CategoryId | null>(null);
 
-  // Hash-based routing for /terminos
+  // Hash-based routing
   useEffect(() => {
     const checkRoute = () => {
       const hash = window.location.hash.replace('#', '');
@@ -52,6 +61,11 @@ export default function App() {
         setView('legal');
       } else if (hash === '/cursos') {
         setView('courses');
+      } else if (hash === '/admin') {
+        setView('admin');
+      } else if (hash.startsWith('/calificar/')) {
+        setReviewToken(hash.replace('/calificar/', ''));
+        setView('review');
       } else {
         setView('home');
       }
@@ -64,6 +78,7 @@ export default function App() {
   const navigateTo = (v: View) => {
     if (v === 'legal') window.location.hash = '/terminos';
     else if (v === 'courses') window.location.hash = '/cursos';
+    else if (v === 'admin') window.location.hash = '/admin';
     else window.location.hash = '';
     setView(v);
   };
@@ -107,11 +122,19 @@ export default function App() {
 
   const handleProfessionalContact = useCallback(
     (p: Professional) => {
-      const waMessage = encodeURIComponent(
-        `Hola ${p.name}, te encontré en TalentoCrux y necesito consultar por tus servicios.`
-      );
-      const waLink = `https://wa.me/${p.whatsapp}?text=${waMessage}`;
       incrementProfessionalClicks(p.id).catch(() => {});
+      setVerifyProf(p);
+      setVerifyOpen(true);
+    },
+    []
+  );
+
+  const handleVerified = useCallback(
+    (whatsapp: string, _name: string) => {
+      const waMessage = encodeURIComponent(
+        `Hola ${verifyProf?.name}, te encontré en TalentoCrux y necesito consultar por tus servicios.`
+      );
+      const waLink = `https://wa.me/${whatsapp}?text=${waMessage}`;
       if (ads.length > 0) {
         const randomAd = ads[Math.floor(Math.random() * ads.length)];
         setPendingWaLink(waLink);
@@ -120,11 +143,11 @@ export default function App() {
         window.open(waLink, '_blank', 'noopener,noreferrer');
       }
     },
-    [ads]
+    [ads, verifyProf]
   );
 
   const handleCourseContact = useCallback(
-    (c: Course) => {
+    (c: any) => {
       const waMessage = encodeURIComponent(
         `Hola ${c.instructor}, vi tu curso '${c.nombreCurso}' en TalentoCrux y quiero solicitar más información.`
       );
@@ -150,21 +173,25 @@ export default function App() {
     }
   }, [pendingWaLink]);
 
-  // ── Render with native ads interspersed every 3 professionals ──
+  // ── Profile handler ──
+  const handleProfile = useCallback((p: Professional) => {
+    setProfileProf(p);
+    setProfileOpen(true);
+  }, []);
+
+  // ── Render grid ──
   const renderGrid = () => {
     const items: React.ReactNode[] = [];
     let adIndex = 0;
     filtered.forEach((p, i) => {
       items.push(
         <div key={p.id} className="card-enter" style={{ animationDelay: `${i * 60}ms` }}>
-          <ProfessionalCard professional={p} onContact={handleProfessionalContact} />
+          <ProfessionalCard professional={p} onContact={handleProfessionalContact} onProfile={handleProfile} />
         </div>
       );
-      // Insert 1 ad every 3 professional cards
       if ((i + 1) % 3 === 0 && ads.length > 0) {
         const ad = ads[adIndex % ads.length];
         adIndex++;
-        // Only render if the ad has media
         if (ad.imagenUrl || ad.linkVideo) {
           items.push(
             <div key={`ad-${i}`} className="sm:col-span-2 lg:col-span-3">
@@ -177,7 +204,7 @@ export default function App() {
     return items;
   };
 
-  // ── Footer component ──
+  // ── Footer ──
   const Footer = () => (
     <footer className="border-t border-slate-200 bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -191,17 +218,11 @@ export default function App() {
             <span className="font-bold text-slate-800">TalentoCrux</span>
           </div>
           <div className="flex items-center gap-4 sm:gap-6">
-            <button
-              onClick={() => navigateTo('legal')}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-700 font-semibold transition-colors"
-            >
+            <button onClick={() => navigateTo('legal')} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-700 font-semibold transition-colors">
               <FileText className="w-3.5 h-3.5" />
               Términos y Condiciones
             </button>
-            <button
-              onClick={() => navigateTo('legal')}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-700 font-semibold transition-colors"
-            >
+            <button onClick={() => navigateTo('legal')} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-700 font-semibold transition-colors">
               <ShieldCheck className="w-3.5 h-3.5" />
               Política de Privacidad
             </button>
@@ -215,6 +236,16 @@ export default function App() {
       </div>
     </footer>
   );
+
+  // ── Admin view ──
+  if (view === 'admin') {
+    return <AdminPanel onExit={() => navigateTo('home')} />;
+  }
+
+  // ── Review view ──
+  if (view === 'review') {
+    return <ReviewPage token={reviewToken} onBack={() => navigateTo('home')} />;
+  }
 
   // ── Legal page view ──
   if (view === 'legal') {
@@ -324,6 +355,8 @@ export default function App() {
       <RegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} onRegistered={load} />
       <CourseModal open={courseModalOpen} onClose={() => setCourseModalOpen(false)} />
       <AdvertiseModal open={advertiseOpen} onClose={() => setAdvertiseOpen(false)} />
+      <ProfessionalProfile professional={profileProf} open={profileOpen} onClose={() => setProfileOpen(false)} onContact={handleProfessionalContact} />
+      <ContactVerificationModal professional={verifyProf} open={verifyOpen} onClose={() => setVerifyOpen(false)} onVerified={handleVerified} />
 
       {/* Interstitial */}
       <InterstitialAd ad={interstitialAd} onComplete={handleInterstitialComplete} />
