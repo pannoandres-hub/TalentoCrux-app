@@ -4,6 +4,12 @@ import type { Professional, Course, Ad, Plan } from '@/types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+if (!supabaseUrl || !supabaseAnonKey) {
+  const msg = 'Faltan las variables de configuración de Supabase. Revisá el archivo .env (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY).';
+  console.error(msg);
+  throw new Error(msg);
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
