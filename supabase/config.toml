@@ -1,6 +1,3 @@
-[functions.airtable-proxy]
-verify_jwt = false
-
 [functions.talentocrux-api]
 verify_jwt = false
 
