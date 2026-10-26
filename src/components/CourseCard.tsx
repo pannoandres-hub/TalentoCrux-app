@@ -1,12 +1,16 @@
-import { Clock, DollarSign, MessageCircle, GraduationCap, User } from 'lucide-react';
+import { Clock, DollarSign, MessageCircle, GraduationCap, User, Star } from 'lucide-react';
 import type { Course } from '@/types';
 
 interface CourseCardProps {
   course: Course;
   onContact: (course: Course) => void;
+  onViewReviews?: (course: Course) => void;
 }
 
-export function CourseCard({ course, onContact }: CourseCardProps) {
+export function CourseCard({ course, onContact, onViewReviews }: CourseCardProps) {
+  const ratingAvg = course.rating_avg ?? 5.0;
+  const reviewCount = course.review_count ?? 0;
+
   return (
     <article className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 hover:border-blue-200 transition-all duration-300 overflow-hidden flex flex-col">
       {/* Header banner */}
@@ -17,7 +21,7 @@ export function CourseCard({ course, onContact }: CourseCardProps) {
         <div className="relative p-4">
           <div className="flex items-center gap-1.5 text-blue-100 text-xs font-semibold mb-1">
             <GraduationCap className="w-3.5 h-3.5" />
-            CURSO
+            CURSO / TALLER
           </div>
           <h3 className="text-lg font-bold text-white leading-tight line-clamp-2">{course.nombreCurso}</h3>
         </div>
@@ -25,28 +29,51 @@ export function CourseCard({ course, onContact }: CourseCardProps) {
 
       {/* Body */}
       <div className="p-4 sm:p-5 flex flex-col flex-1 gap-3">
-        <div className="flex items-center gap-1.5 text-sm text-slate-600">
-          <User className="w-4 h-4 text-slate-400" />
-          <span className="font-semibold">Por {course.instructor}</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-sm text-slate-700">
+            <User className="w-4 h-4 text-slate-400" />
+            <span className="font-semibold truncate">Por {course.instructor}</span>
+          </div>
+        </div>
+
+        {/* Rating and opinions badge */}
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-amber-50/80 border border-amber-200/70">
+          <div className="flex items-center gap-1.5">
+            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+            <span className="text-sm font-bold text-amber-900">{ratingAvg.toFixed(1)}</span>
+            <span className="text-xs text-amber-700">
+              ({reviewCount} {reviewCount === 1 ? 'opinión' : 'opiniones'})
+            </span>
+          </div>
+
+          {onViewReviews && (
+            <button
+              type="button"
+              onClick={() => onViewReviews(course)}
+              className="text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline"
+            >
+              Ver opiniones
+            </button>
+          )}
         </div>
 
         <p className="text-sm text-slate-500 leading-relaxed line-clamp-3">{course.descripcion}</p>
 
         {/* Duration + Price */}
-        <div className="flex flex-wrap gap-2 mt-1">
+        <div className="flex flex-wrap gap-2 mt-auto pt-1">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100">
             <Clock className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-bold text-blue-700">{course.duracionHoras} hs</span>
+            <span className="text-sm font-bold text-blue-700">{course.duracionHoras}</span>
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 border border-green-100">
             <DollarSign className="w-4 h-4 text-green-600" />
-            <span className="text-sm font-bold text-green-700">${course.precioARS} ARS</span>
+            <span className="text-sm font-bold text-green-700">${course.precioARS.toLocaleString('es-AR')} ARS</span>
           </div>
         </div>
 
         <button
           onClick={() => onContact(course)}
-          className="mt-auto flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold shadow-md shadow-green-200/50 hover:shadow-lg hover:shadow-green-300/50 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+          className="mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold shadow-md shadow-green-200/50 hover:shadow-lg hover:shadow-green-300/50 hover:scale-[1.01] active:scale-95 transition-all duration-200"
         >
           <MessageCircle className="w-4 h-4" />
           Consultar por WhatsApp

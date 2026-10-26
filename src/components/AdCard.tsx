@@ -1,4 +1,3 @@
-import { Video } from 'lucide-react';
 import type { Ad } from '@/types';
 
 interface AdCardProps {

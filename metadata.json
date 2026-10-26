@@ -1,0 +1,7 @@
+{
+  "name": "TalentoCrux — Profesionales en CABA",
+  "description": "TalentoCrux: conectá con profesionales independientes en Buenos Aires. El punto donde encontrás la solución que buscás en CABA.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -23,6 +23,10 @@ export interface Course {
   duracionHoras: string | number;
   precioARS: number;
   clicksContacto: number;
+  estado?: string;
+  created_at?: string;
+  rating_avg?: number;
+  review_count?: number;
 }
 
 export interface Ad {

@@ -60,9 +60,7 @@ export function AdvertiseModal({ open, onClose }: AdvertiseModalProps) {
 
     setSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    const planNombre = String(
-      (selectedPlan && (selectedPlan.nombre || (selectedPlan as any).title)) || 'Plan Básico'
-    );
+    const planNombre = String(selectedPlan?.nombre || 'Plan Básico');
     try {
       await registerAdvert({
         planNombre,

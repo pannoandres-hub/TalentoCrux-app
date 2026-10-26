@@ -20,7 +20,7 @@ import {
   incrementAdClicks,
   incrementCourseClicks,
 } from '@/lib/api';
-import type { CategoryId, Professional, Ad } from '@/types';
+import type { CategoryId, Professional, Ad, Course } from '@/types';
 import { SearchX, Loader2, AlertCircle, FileText, ShieldCheck } from 'lucide-react';
 
 type View = 'home' | 'courses' | 'legal' | 'review' | 'admin';
@@ -36,6 +36,7 @@ export default function App() {
   const [profileProf, setProfileProf] = useState<Professional | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [verifyProf, setVerifyProf] = useState<Professional | null>(null);
+  const [verifyCourse, setVerifyCourse] = useState<Course | null>(null);
   const [verifyOpen, setVerifyOpen] = useState(false);
 
   // Interstitial
@@ -123,16 +124,30 @@ export default function App() {
   const handleProfessionalContact = useCallback(
     (p: Professional) => {
       incrementProfessionalClicks(p.id).catch(() => {});
+      setVerifyCourse(null);
       setVerifyProf(p);
       setVerifyOpen(true);
     },
     []
   );
 
+  const handleCourseContact = useCallback(
+    (c: Course) => {
+      incrementCourseClicks(c.id).catch(() => {});
+      setVerifyProf(null);
+      setVerifyCourse(c);
+      setVerifyOpen(true);
+    },
+    []
+  );
+
   const handleVerified = useCallback(
-    (whatsapp: string, _name: string) => {
+    (whatsapp: string, targetName: string) => {
+      const isCourse = Boolean(verifyCourse);
       const waMessage = encodeURIComponent(
-        `Hola ${verifyProf?.name}, te encontré en TalentoCrux y necesito consultar por tus servicios.`
+        isCourse
+          ? `Hola, vi tu curso '${verifyCourse?.nombreCurso}' en TalentoCrux y quiero solicitar más información.`
+          : `Hola ${verifyProf?.name || targetName}, te encontré en TalentoCrux y necesito consultar por tus servicios.`
       );
       const waLink = `https://wa.me/${whatsapp}?text=${waMessage}`;
       if (ads.length > 0) {
@@ -143,19 +158,7 @@ export default function App() {
         window.open(waLink, '_blank', 'noopener,noreferrer');
       }
     },
-    [ads, verifyProf]
-  );
-
-  const handleCourseContact = useCallback(
-    (c: any) => {
-      const waMessage = encodeURIComponent(
-        `Hola ${c.instructor}, vi tu curso '${c.nombreCurso}' en TalentoCrux y quiero solicitar más información.`
-      );
-      const waLink = `https://wa.me/${c.whatsapp}?text=${waMessage}`;
-      incrementCourseClicks(c.id).catch(() => {});
-      window.open(waLink, '_blank', 'noopener,noreferrer');
-    },
-    []
+    [ads, verifyProf, verifyCourse]
   );
 
   const handleAdClick = useCallback((ad: Ad) => {
@@ -217,7 +220,7 @@ export default function App() {
             />
             <span className="font-bold text-slate-800">TalentoCrux</span>
           </div>
-          <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6">
             <button onClick={() => navigateTo('legal')} className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-700 font-semibold transition-colors">
               <FileText className="w-3.5 h-3.5" />
               Términos y Condiciones
@@ -226,11 +229,18 @@ export default function App() {
               <ShieldCheck className="w-3.5 h-3.5" />
               Política de Privacidad
             </button>
+            <button onClick={() => navigateTo('admin')} className="flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900 font-bold transition-colors bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 shadow-sm">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              Panel Admin (/#/admin)
+            </button>
           </div>
         </div>
-        <div className="mt-6 pt-6 border-t border-slate-100">
-          <p className="text-xs text-slate-400 text-center">
+        <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-xs text-slate-400 text-center sm:text-left">
             © 2026 TalentoCrux. Todos los derechos reservados. El punto donde encontrás la solución que buscás en CABA.
+          </p>
+          <p className="text-[11px] text-slate-400">
+            Extensión de administración: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700 font-semibold">/#/admin</code>
           </p>
         </div>
       </div>
@@ -356,7 +366,17 @@ export default function App() {
       <CourseModal open={courseModalOpen} onClose={() => setCourseModalOpen(false)} />
       <AdvertiseModal open={advertiseOpen} onClose={() => setAdvertiseOpen(false)} />
       <ProfessionalProfile professional={profileProf} open={profileOpen} onClose={() => setProfileOpen(false)} onContact={handleProfessionalContact} />
-      <ContactVerificationModal professional={verifyProf} open={verifyOpen} onClose={() => setVerifyOpen(false)} onVerified={handleVerified} />
+      <ContactVerificationModal
+        professional={verifyProf}
+        course={verifyCourse}
+        open={verifyOpen}
+        onClose={() => {
+          setVerifyOpen(false);
+          setVerifyProf(null);
+          setVerifyCourse(null);
+        }}
+        onVerified={handleVerified}
+      />
 
       {/* Interstitial */}
       <InterstitialAd ad={interstitialAd} onComplete={handleInterstitialComplete} />

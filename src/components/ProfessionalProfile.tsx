@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Star, MapPin, Clock, MessageCircle, ShieldCheck, Sparkles, ChevronLeft, Loader2, MessageSquare } from 'lucide-react';
+import {
+  X, Star, MapPin, Clock, MessageCircle, ShieldCheck, Sparkles, Loader2,
+  MessageSquare, ThumbsUp
+} from 'lucide-react';
 import type { Professional } from '@/types';
 import { fetchProfessionalReviews, type Review } from '@/lib/api';
 
@@ -13,13 +16,19 @@ interface ProfessionalProfileProps {
 export function ProfessionalProfile({ professional, open, onClose, onContact }: ProfessionalProfileProps) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
+  const [starFilter, setStarFilter] = useState<number | 'all'>('all');
+  const [visibleCount, setVisibleCount] = useState<number>(10);
 
   useEffect(() => {
     if (open && professional) {
       document.body.style.overflow = 'hidden';
       setLoading(true);
+      setStarFilter('all');
+      setVisibleCount(10);
       fetchProfessionalReviews(professional.id)
-        .then(setReviews)
+        .then((data) => {
+          setReviews(data);
+        })
         .catch(() => setReviews([]))
         .finally(() => setLoading(false));
     } else {
@@ -32,6 +41,13 @@ export function ProfessionalProfile({ professional, open, onClose, onContact }: 
 
   const isNew = professional.reviews === 0 || professional.rating === 0;
   const hasRating = professional.reviews > 0 && professional.rating > 0;
+
+  const filteredReviews = reviews.filter((r) => {
+    if (starFilter === 'all') return true;
+    return r.rating === starFilter;
+  });
+
+  const displayedReviews = filteredReviews.slice(0, visibleCount);
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }).map((_, i) => (
@@ -93,59 +109,114 @@ export function ProfessionalProfile({ professional, open, onClose, onContact }: 
               <p className="text-sm text-slate-600 leading-relaxed mt-3">{professional.description}</p>
             )}
 
-            <div className="flex flex-col gap-2 text-sm text-slate-500 mt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-sm text-slate-500 mt-4">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-slate-400" />
+                <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <span>{professional.neighborhood}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-400" />
+                <Clock className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <span>{professional.schedule}</span>
               </div>
             </div>
           </div>
 
+          {/* Action buttons */}
           {/* Contact button */}
-          <button
-            onClick={() => onContact(professional)}
-            className="w-full py-3.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold shadow-md shadow-green-200/50 hover:shadow-lg hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <MessageCircle className="w-5 h-5" />
-            Contactar por WhatsApp
-          </button>
+          <div>
+            <button
+              onClick={() => onContact(professional)}
+              className="w-full py-3.5 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-bold shadow-md shadow-green-200/50 hover:shadow-lg hover:scale-[1.01] active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <MessageCircle className="w-5 h-5" />
+              Contactar por WhatsApp
+            </button>
+          </div>
 
-          {/* Reviews wall */}
+          {/* Reviews wall: Full view of all opinions */}
           <div className="border-t border-slate-200 pt-5">
-            <div className="flex items-center gap-2 mb-4">
-              <MessageSquare className="w-5 h-5 text-slate-700" />
-              <h3 className="text-base font-bold text-slate-900">Opiniones y calificaciones</h3>
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-slate-700" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Opiniones y calificaciones ({reviews.length})
+                </h3>
+              </div>
+              {reviews.length > 0 && (
+                <span className="text-xs text-slate-400 font-medium">
+                  {filteredReviews.length} visibles
+                </span>
+              )}
             </div>
 
             {hasRating && (
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-amber-50 border border-amber-100 mb-4">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-amber-600">{professional.rating.toFixed(1)}</p>
-                  <div className="flex gap-0.5 justify-center mt-1">{renderStars(professional.rating)}</div>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-amber-50/70 border border-amber-200 mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-extrabold text-amber-600">{professional.rating.toFixed(1)}</p>
+                    <div className="flex gap-0.5 justify-center mt-1">{renderStars(professional.rating)}</div>
+                  </div>
+                  <div className="border-l border-amber-200 pl-4">
+                    <p className="text-sm font-bold text-slate-800">
+                      {reviews.length} {reviews.length === 1 ? 'opinión verificada' : 'opiniones verificadas'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">Todas las calificaciones provienen de clientes que contactaron al profesional</p>
+                  </div>
                 </div>
-                <div className="border-l border-amber-200 pl-4">
-                  <p className="text-sm font-semibold text-slate-700">{professional.reviews} {professional.reviews === 1 ? 'opinión' : 'opiniones'}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Promedio basado en calificaciones verificadas</p>
+
+                {/* Rating filter pills */}
+                <div className="flex items-center gap-1.5 self-stretch sm:self-auto overflow-x-auto pb-1 sm:pb-0">
+                  <button
+                    onClick={() => { setStarFilter('all'); setVisibleCount(10); }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                      starFilter === 'all'
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'bg-white border border-amber-200 text-slate-600 hover:bg-amber-100/50'
+                    }`}
+                  >
+                    Todas ({reviews.length})
+                  </button>
+                  <button
+                    onClick={() => { setStarFilter(5); setVisibleCount(10); }}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                      starFilter === 5
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'bg-white border border-amber-200 text-slate-600 hover:bg-amber-100/50'
+                    }`}
+                  >
+                    5 <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> ({reviews.filter((r) => r.rating === 5).length})
+                  </button>
+                  <button
+                    onClick={() => { setStarFilter(4); setVisibleCount(10); }}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                      starFilter === 4
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'bg-white border border-amber-200 text-slate-600 hover:bg-amber-100/50'
+                    }`}
+                  >
+                    4 <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> ({reviews.filter((r) => r.rating === 4).length})
+                  </button>
                 </div>
               </div>
             )}
 
             {loading ? (
-              <div className="flex items-center justify-center py-8">
+              <div className="flex items-center justify-center py-10">
                 <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
               </div>
             ) : reviews.length > 0 ? (
               <div className="space-y-3">
-                {reviews.map((review) => (
-                  <div key={review.id} className="p-4 rounded-xl border border-slate-200 bg-white">
+                {displayedReviews.map((review, idx) => (
+                  <div key={review.id || idx} className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-colors shadow-sm">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex gap-0.5">{renderStars(review.rating)}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-0.5">{renderStars(review.rating)}</div>
+                        <span className="flex items-center gap-1 text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded-full font-semibold border border-green-100">
+                          <ThumbsUp className="w-2.5 h-2.5" /> Verificado
+                        </span>
+                      </div>
                       <span className="text-[11px] text-slate-400">
-                        {new Date(review.created_at).toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        {new Date(review.created_at).toLocaleDateString('es-AR', { year: 'numeric', month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                     {review.comment && (
@@ -153,12 +224,30 @@ export function ProfessionalProfile({ professional, open, onClose, onContact }: 
                     )}
                   </div>
                 ))}
+
+                {/* Show more button if there are more reviews */}
+                {visibleCount < filteredReviews.length && (
+                  <button
+                    onClick={() => setVisibleCount((prev) => prev + 10)}
+                    className="w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-colors"
+                  >
+                    Ver más opiniones ({filteredReviews.length - visibleCount} restantes)
+                  </button>
+                )}
+
+                {filteredReviews.length > 10 && visibleCount >= filteredReviews.length && (
+                  <p className="text-center text-xs text-slate-400 py-2">
+                    Has visto las {filteredReviews.length} opiniones registradas.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="text-center py-8">
                 <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-400">Todavía no hay opiniones para este profesional.</p>
-                <p className="text-xs text-slate-400 mt-1">Las opiniones aparecen después de que los usuarios verifican su contacto y califican el servicio.</p>
+                <p className="text-sm text-slate-500">Todavía no hay opiniones para este profesional.</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  Las opiniones aparecen después de que los clientes contactan al profesional y completan su calificación a las 2 semanas.
+                </p>
               </div>
             )}
           </div>
