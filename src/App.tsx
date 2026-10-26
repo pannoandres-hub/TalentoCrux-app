@@ -229,18 +229,11 @@ export default function App() {
               <ShieldCheck className="w-3.5 h-3.5" />
               Política de Privacidad
             </button>
-            <button onClick={() => navigateTo('admin')} className="flex items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900 font-bold transition-colors bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 shadow-sm">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              Panel Admin (/#/admin)
-            </button>
           </div>
         </div>
         <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-slate-400 text-center sm:text-left">
             © 2026 TalentoCrux. Todos los derechos reservados. El punto donde encontrás la solución que buscás en CABA.
-          </p>
-          <p className="text-[11px] text-slate-400">
-            Extensión de administración: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700 font-semibold">/#/admin</code>
           </p>
         </div>
       </div>

@@ -4,7 +4,8 @@ import {
   Trash2, Edit3, Star, Eye, Image as ImageIcon, KeyRound, Mail, Lock,
   ChevronLeft, Users, Megaphone, MessageSquare, ShieldCheck,
   FileText, X, Save, Copy, Check, GraduationCap, ExternalLink, Link2,
-  PhoneCall, MessageCircle, Send, AtSign, Clock, Filter, Search, User, RotateCcw
+  PhoneCall, MessageCircle, Send, AtSign, Clock, Filter, Search, User, RotateCcw,
+  Plus
 } from 'lucide-react';
 import {
   adminSignIn, adminSignOut, adminChangePassword, adminResetPassword,
@@ -14,11 +15,14 @@ import {
   adminListAds, adminSetAdEstado, adminUpdateAd, adminDeleteAd,
   adminListReviews, adminSetReviewEstado, adminDeleteReview, adminListContactLogs, adminDeleteContactLog,
   adminRegenerateContactCode, adminReactivateContactCode, adminDeleteProfessionalMedia, adminDeleteAdMedia,
+  adminCreateProfessional, adminCreateCourse, adminCreateAd,
   getPrivateImageUrl, getAdminSession, getProfessionalReviewUrl,
   type AdminProfessional, type AdminAd, type AdminReview, type ContactLog,
   type ProfessionalMediaType,
 } from '@/lib/api';
-import type { Course } from '@/types';
+import type { Course, CategoryId } from '@/types';
+import { NEIGHBORHOODS, CATEGORIES } from '@/types';
+import { FileUpload } from '@/components/FileUpload';
 
 type Tab = 'professionals' | 'contacts' | 'courses' | 'ads' | 'reviews';
 
@@ -244,11 +248,6 @@ function LoginScreen({
     }
   };
 
-  const handleFillDemo = () => {
-    onEmail(adminGetAdminEmail());
-    onPassword('admin123');
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -257,25 +256,6 @@ function LoginScreen({
           <h1 className="text-xl font-bold text-white">Panel de Administración</h1>
           <p className="text-xs text-slate-400 mt-1">TalentoCrux · Gestión CABA</p>
         </div>
-
-        {/* Info card with credentials */}
-        {mode === 'login' && (
-          <div className="p-4 bg-blue-50 border-b border-blue-100 flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-blue-900 flex-1">
-              <p className="font-bold">Credenciales de acceso vigentes:</p>
-              <p className="font-mono mt-0.5">Email: <strong>{adminGetAdminEmail()}</strong></p>
-              <p className="font-mono">Clave por defecto: <strong>admin123</strong></p>
-              <button
-                type="button"
-                onClick={handleFillDemo}
-                className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition-colors"
-              >
-                Completar automáticamente
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="p-6">
           {mode === 'login' && (
@@ -295,7 +275,7 @@ function LoginScreen({
                     type="email"
                     value={email}
                     onChange={(e) => onEmail(e.target.value)}
-                    placeholder={adminGetAdminEmail()}
+                    placeholder="admin@cruxtalento.com"
                     className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                   />
                 </div>
@@ -1032,6 +1012,7 @@ function ProfessionalsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<AdminProfessional | null>(null);
+  const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<string>('Todos');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -1079,18 +1060,27 @@ function ProfessionalsTab() {
           <h2 className="text-lg font-bold text-slate-800">Profesionales ({list.length})</h2>
           <p className="text-xs text-slate-500">Revisá multimedia, DNI, matrículas y copiá el link para calificar a las 2 semanas.</p>
         </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {['Todos', 'Pendiente', 'Aprobado', 'Rechazado', 'Pausado'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                filter === f ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Agregar profesional
+          </button>
+          <div className="flex gap-1.5 flex-wrap">
+            {['Todos', 'Pendiente', 'Aprobado', 'Rechazado', 'Pausado'].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  filter === f ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1261,6 +1251,230 @@ function ProfessionalsTab() {
           onSaved={load}
         />
       )}
+
+      {creating && (
+        <AdminAddProfessionalModal
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            setCreating(false);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Admin Direct Add Professional Modal (all fields optional, no terms) ──
+
+function AdminAddProfessionalModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [profession, setProfession] = useState('');
+  const [category, setCategory] = useState<CategoryId>('hogar');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [schedule, setSchedule] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [description, setDescription] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [dniFrente, setDniFrente] = useState('');
+  const [dniDorso, setDniDorso] = useState('');
+  const [numeroMatricula, setNumeroMatricula] = useState('');
+  const [fotoMatricula, setFotoMatricula] = useState('');
+  const [estado, setEstado] = useState<'Aprobado' | 'Pendiente' | 'Pausado'>('Aprobado');
+  const [verificado, setVerificado] = useState(true);
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await adminCreateProfessional({
+        name: name.trim() || undefined,
+        profession: profession.trim() || undefined,
+        category,
+        neighborhood: neighborhood || undefined,
+        schedule: schedule.trim() || undefined,
+        whatsapp: whatsapp.trim() || undefined,
+        description: description.trim() || undefined,
+        photo_url: photoUrl || undefined,
+        dni_frente_path: dniFrente || undefined,
+        dni_dorso_path: dniDorso || undefined,
+        numero_matricula: numeroMatricula.trim() || undefined,
+        foto_matricula_path: fotoMatricula || undefined,
+        estado,
+        verificado,
+      });
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear profesional');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cls = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40';
+
+  return (
+    <div className="fixed inset-0 z-[65] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
+        <div className="sticky top-0 flex items-center justify-between px-5 py-4 bg-slate-900 text-white rounded-t-2xl z-10">
+          <div>
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <Plus className="w-5 h-5 text-blue-400" />
+              Agregar Profesional desde Admin
+            </h3>
+            <p className="text-xs text-slate-400">Todos los campos son opcionales y no se solicitan términos ni condiciones.</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-white/80 hover:bg-white/10">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600">{error}</div>}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Nombre completo (opcional)">
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Juan Pérez" className={cls} />
+            </Field>
+            <Field label="Oficio / Profesión (opcional)">
+              <input value={profession} onChange={(e) => setProfession(e.target.value)} placeholder="Ej: Gasista Matriculado" className={cls} />
+            </Field>
+            <Field label="Categoría">
+              <select value={category} onChange={(e) => setCategory(e.target.value as CategoryId)} className={cls}>
+                {CATEGORIES.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Barrio en CABA (opcional)">
+              <select value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className={cls}>
+                <option value="">Seleccionar barrio (opcional)</option>
+                {NEIGHBORHOODS.filter((n) => n !== 'Todos los barrios').map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="WhatsApp de contacto (opcional)">
+              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="Ej: 5491155551234" className={cls} />
+            </Field>
+            <Field label="Horario de atención (opcional)">
+              <input value={schedule} onChange={(e) => setSchedule(e.target.value)} placeholder="Ej: Lun a Vie 8:00 a 18:00" className={cls} />
+            </Field>
+          </div>
+
+          <Field label="Descripción de servicios (opcional)">
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detalle de trabajos, experiencia o servicios ofrecidos…"
+              className={cls}
+            />
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Número de Matrícula (opcional)">
+              <input value={numeroMatricula} onChange={(e) => setNumeroMatricula(e.target.value)} placeholder="Ej: COPIME-12345" className={cls} />
+            </Field>
+            <Field label="Estado inicial">
+              <select value={estado} onChange={(e) => setEstado(e.target.value as 'Aprobado' | 'Pendiente' | 'Pausado')} className={cls}>
+                <option value="Aprobado">Aprobado (Visible en el sitio)</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Pausado">Pausado</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+            <input
+              type="checkbox"
+              id="prof-add-verificado"
+              checked={verificado}
+              onChange={(e) => setVerificado(e.target.checked)}
+              className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+            />
+            <label htmlFor="prof-add-verificado" className="text-xs font-semibold text-slate-700 cursor-pointer">
+              Marcar perfil con tilde de Verificado
+            </label>
+          </div>
+
+          {/* Multimedia uploads / URLs */}
+          <div className="border border-slate-200 bg-slate-50/70 rounded-xl p-4 space-y-3">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Multimedia y Documentos (Todos opcionales)</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <FileUpload label="Foto de Perfil" onChange={(b64) => setPhotoUrl(b64 || '')} required={false} />
+                <input
+                  type="url"
+                  value={photoUrl.startsWith('data:') ? '' : photoUrl}
+                  onChange={(e) => setPhotoUrl(e.target.value)}
+                  placeholder="O pegar URL de imagen"
+                  className="mt-1 w-full text-xs px-2.5 py-1.5 rounded border border-slate-200"
+                />
+              </div>
+              <div>
+                <FileUpload label="DNI Frente" onChange={(b64) => setDniFrente(b64 || '')} required={false} />
+                <input
+                  type="url"
+                  value={dniFrente.startsWith('data:') ? '' : dniFrente}
+                  onChange={(e) => setDniFrente(e.target.value)}
+                  placeholder="O pegar URL de imagen"
+                  className="mt-1 w-full text-xs px-2.5 py-1.5 rounded border border-slate-200"
+                />
+              </div>
+              <div>
+                <FileUpload label="DNI Dorso" onChange={(b64) => setDniDorso(b64 || '')} required={false} />
+                <input
+                  type="url"
+                  value={dniDorso.startsWith('data:') ? '' : dniDorso}
+                  onChange={(e) => setDniDorso(e.target.value)}
+                  placeholder="O pegar URL de imagen"
+                  className="mt-1 w-full text-xs px-2.5 py-1.5 rounded border border-slate-200"
+                />
+              </div>
+              <div>
+                <FileUpload label="Foto Matrícula" onChange={(b64) => setFotoMatricula(b64 || '')} required={false} />
+                <input
+                  type="url"
+                  value={fotoMatricula.startsWith('data:') ? '' : fotoMatricula}
+                  onChange={(e) => setFotoMatricula(e.target.value)}
+                  placeholder="O pegar URL de imagen"
+                  className="mt-1 w-full text-xs px-2.5 py-1.5 rounded border border-slate-200"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow transition-all flex items-center gap-1.5 disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Guardar Profesional
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -1580,6 +1794,7 @@ function CoursesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Course | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1613,6 +1828,13 @@ function CoursesTab() {
           <h2 className="text-lg font-bold text-slate-800">Cursos y Talleres ({courses.length})</h2>
           <p className="text-xs text-slate-500">Aprobá, modificá los precios o pausá cursos publicados por profesionales.</p>
         </div>
+        <button
+          onClick={() => setCreating(true)}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          Agregar curso
+        </button>
       </div>
 
       {loading ? (
@@ -1702,6 +1924,150 @@ function CoursesTab() {
           onSaved={load}
         />
       )}
+
+      {creating && (
+        <AdminAddCourseModal
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            setCreating(false);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Admin Direct Add Course Modal (all fields optional, no terms) ──
+
+function AdminAddCourseModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [nombreCurso, setNombreCurso] = useState('');
+  const [instructor, setInstructor] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [email, setEmail] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [duracionHoras, setDuracionHoras] = useState('');
+  const [precioARS, setPrecioARS] = useState<number | ''>('');
+  const [estado, setEstado] = useState<'Activo' | 'Pendiente' | 'Pausado'>('Activo');
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await adminCreateCourse({
+        nombreCurso: nombreCurso.trim() || undefined,
+        instructor: instructor.trim() || undefined,
+        whatsapp: whatsapp.trim() || undefined,
+        email: email.trim() || undefined,
+        descripcion: descripcion.trim() || undefined,
+        duracionHoras: duracionHoras.trim() || undefined,
+        precioARS: typeof precioARS === 'number' ? precioARS : 0,
+        estado,
+      });
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear curso');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cls = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40';
+
+  return (
+    <div className="fixed inset-0 z-[65] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
+        <div className="sticky top-0 flex items-center justify-between px-5 py-4 bg-slate-900 text-white rounded-t-2xl z-10">
+          <div>
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <Plus className="w-5 h-5 text-blue-400" />
+              Agregar Curso desde Admin
+            </h3>
+            <p className="text-xs text-slate-400">Todos los campos son opcionales y no se solicitan términos ni condiciones.</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-white/80 hover:bg-white/10">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600">{error}</div>}
+
+          <Field label="Nombre del curso / taller (opcional)">
+            <input value={nombreCurso} onChange={(e) => setNombreCurso(e.target.value)} placeholder="Ej: Taller de Electricidad Domiciliaria" className={cls} />
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Instructor (opcional)">
+              <input value={instructor} onChange={(e) => setInstructor(e.target.value)} placeholder="Ej: Carlos Rossi" className={cls} />
+            </Field>
+            <Field label="WhatsApp de contacto (opcional)">
+              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="Ej: 5491155551234" className={cls} />
+            </Field>
+            <Field label="Email de contacto (opcional)">
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="instructor@ejemplo.com" className={cls} />
+            </Field>
+            <Field label="Duración (opcional)">
+              <input value={duracionHoras} onChange={(e) => setDuracionHoras(e.target.value)} placeholder="Ej: 8 horas (4 clases)" className={cls} />
+            </Field>
+            <Field label="Precio en ARS (opcional)">
+              <input
+                type="number"
+                value={precioARS}
+                onChange={(e) => setPrecioARS(e.target.value ? Number(e.target.value) : '')}
+                placeholder="Ej: 25000"
+                className={cls}
+              />
+            </Field>
+            <Field label="Estado inicial">
+              <select value={estado} onChange={(e) => setEstado(e.target.value as 'Activo' | 'Pendiente' | 'Pausado')} className={cls}>
+                <option value="Activo">Activo (Visible en cursos)</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Pausado">Pausado</option>
+              </select>
+            </Field>
+          </div>
+
+          <Field label="Descripción del curso (opcional)">
+            <textarea
+              rows={3}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Temario, requisitos, metodología y lugar o modalidad…"
+              className={cls}
+            />
+          </Field>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow transition-all flex items-center gap-1.5 disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Guardar Curso
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -1790,6 +2156,7 @@ function AdsTab() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('Todos');
   const [editing, setEditing] = useState<AdminAd | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1824,18 +2191,27 @@ function AdsTab() {
           <h2 className="text-lg font-bold text-slate-800">Publicidades y Anuncios ({list.length})</h2>
           <p className="text-xs text-slate-500">Revisá banners, videos, links y autorizá o pausá anuncios comerciales.</p>
         </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {['Todos', 'Pendiente', 'Activo', 'Rechazado', 'Pausado'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
-                filter === f ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Agregar anuncio
+          </button>
+          <div className="flex gap-1.5 flex-wrap">
+            {['Todos', 'Pendiente', 'Activo', 'Rechazado', 'Pausado'].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                  filter === f ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1965,6 +2341,153 @@ function AdsTab() {
           onSaved={load}
         />
       )}
+
+      {creating && (
+        <AdminAddAdModal
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            setCreating(false);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Admin Direct Add Ad Modal (all fields optional, no terms, no payments) ──
+
+function AdminAddAdModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [titulo, setTitulo] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [planNombre, setPlanNombre] = useState('Plan Básico');
+  const [link, setLink] = useState('');
+  const [linkVideo, setLinkVideo] = useState('');
+  const [imagenPath, setImagenPath] = useState('');
+  const [estado, setEstado] = useState<'Activo' | 'Pendiente' | 'Pausado'>('Activo');
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await adminCreateAd({
+        titulo: titulo.trim() || undefined,
+        descripcion: descripcion.trim() || undefined,
+        plan_nombre: planNombre || undefined,
+        link: link.trim() || undefined,
+        link_video: linkVideo.trim() || undefined,
+        imagen_path: imagenPath || undefined,
+        estado,
+      });
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al crear anuncio');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cls = 'w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40';
+
+  return (
+    <div className="fixed inset-0 z-[65] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
+        <div className="sticky top-0 flex items-center justify-between px-5 py-4 bg-slate-900 text-white rounded-t-2xl z-10">
+          <div>
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <Plus className="w-5 h-5 text-blue-400" />
+              Agregar Anuncio desde Admin
+            </h3>
+            <p className="text-xs text-slate-400">Todos los campos son opcionales y no se solicitan términos ni cobros.</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-white/80 hover:bg-white/10">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600">{error}</div>}
+
+          <Field label="Título del anuncio (opcional)">
+            <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ej: Distribuidora Eléctrica Palermo" className={cls} />
+          </Field>
+
+          <Field label="Descripción publicitaria (opcional)">
+            <textarea
+              rows={3}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Texto comercial, promociones, descuentos, servicios…"
+              className={cls}
+            />
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Plan publicitario (opcional)">
+              <select value={planNombre} onChange={(e) => setPlanNombre(e.target.value)} className={cls}>
+                <option value="Plan Básico">Plan Básico (15 días)</option>
+                <option value="Plan Destacado">Plan Destacado (30 días)</option>
+                <option value="Plan Premium">Plan Premium (60 días)</option>
+                <option value="Anuncio Directo">Anuncio Directo Admin</option>
+              </select>
+            </Field>
+            <Field label="Estado inicial">
+              <select value={estado} onChange={(e) => setEstado(e.target.value as 'Activo' | 'Pendiente' | 'Pausado')} className={cls}>
+                <option value="Activo">Activo (Visible en banners)</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Pausado">Pausado</option>
+              </select>
+            </Field>
+            <Field label="Enlace de destino / web / WhatsApp (opcional)">
+              <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://miempresa.com o https://wa.me/..." className={cls} />
+            </Field>
+            <Field label="Link de Video (YouTube / Vimeo / etc.) (opcional)">
+              <input value={linkVideo} onChange={(e) => setLinkVideo(e.target.value)} placeholder="https://youtube.com/watch?v=..." className={cls} />
+            </Field>
+          </div>
+
+          <div className="border border-slate-200 bg-slate-50/70 rounded-xl p-4 space-y-3">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Banner / Imagen Publicitaria (Opcional)</h4>
+            <FileUpload label="Cargar banner o imagen" onChange={(b64) => setImagenPath(b64 || '')} required={false} />
+            <input
+              type="url"
+              value={imagenPath.startsWith('data:') ? '' : imagenPath}
+              onChange={(e) => setImagenPath(e.target.value)}
+              placeholder="O pegar URL directa de imagen"
+              className="mt-1 w-full text-xs px-2.5 py-1.5 rounded border border-slate-200"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow transition-all flex items-center gap-1.5 disabled:opacity-60"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Guardar Anuncio
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
